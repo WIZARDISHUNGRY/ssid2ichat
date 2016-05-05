@@ -1,0 +1,22 @@
+{
+  "name": "ssid2ichat",
+  "keywords": [
+    "osx",
+    "messages",
+    "wifi"
+  ],
+  "version": "0.0.0",
+  "description": "Set your iChat status based on the SSID",
+  "licenses": [
+    {
+      "type": "Apache 2.0"
+    }
+  ],
+  "bin": {
+    "ssid2ichat": "./bin/ssid2ichat.js"
+  },
+  "dependencies": {
+    "sleep": "^3.0.1",
+    "yamljs": "^0.2.7"
+  }
+}
