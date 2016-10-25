@@ -2,7 +2,7 @@
 /*!
  * Module dependencies.
  */
-var exec = require('child_process').exec,
+var child_process = require('child_process'),
   fs = require('fs'),
   sleep = require('sleep').sleep,
   YAML = require('yamljs');
@@ -14,12 +14,7 @@ var exec = require('child_process').exec,
 var name = process.argv[1].replace(/^.*[\\\/]/, '').replace('.js', '');
 var input = process.argv[2];
 var files = [process.env['HOME']+"/."+name+".yml", process.cwd()+"/"+name+".yml"];
-var airport = "/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -I"
-
-for (let value of files) {
-  if(fs.existsSync(value)) input = value;
-}
-if (input == undefined) input = files[0];
+var airport = "/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport";
 
 /*!
  * Display help
@@ -39,6 +34,11 @@ if (input === '-v' || input === '--version') {
     process.exit();
 }
 
+for (let value of files) {
+  if(fs.existsSync(value)) input = value;
+}
+if (input == undefined) input = files[0];
+
 /*!
  * Get ready to run
  */
@@ -53,34 +53,43 @@ var ssid;
 do {
   go(input);
   sleep(60);
-}while(0);
+}while(1);
 
 /*!
  * This is the meat
  */
 function go(file) {
   var ssid_old = ssid;
-  exec(airport, (err, stdout, stderr) => { 
-    var lines = stdout.split("\n");
-    lines.forEach((line) => {
-      var match = line.match(/ SSID: (.*)/);
-      if(match) ssid = match[1];
-    });
-
-    if(ssid_old == ssid) return;
-    console.log(`SSID changed: ${ssid_old} => ${ssid}`);
-    var data = YAML.load(file);
-    for (let key in data) {
-      var match = ssid.match(key);
-      if(match) {
-        console.log(`"${key}" matched SSID "${ssid}"`);
-        var osascript = `osascript -e "tell application \\"Messages\\" to set the status message to \\"${data[key]}\\""`;
-        console.log(osascript);
-        exec(osascript, () => {});
-        break;
-      }
+  var stdout = child_process.execFileSync(airport, ["-I"] ).toString();
+  var lines = stdout.split("\n");
+  var no_match = true;
+  lines.forEach((line) => {
+    var match = line.match(/ SSID: (.*)/);
+    if(match) {
+      ssid = match[1];
+      console.log(ssid);
     }
+    no_match = no_match && !match;
   });
+
+  if(no_match) { // fall through for ethernet or USB tether
+    console.log
+    ssid = '';
+  }
+
+  if(ssid_old == ssid) return;
+  console.log(`SSID changed: ${ssid_old} => ${ssid}`);
+  var data = YAML.load(file);
+  for (let key in data) {
+    var match = ssid.match(key);
+    if(match) {
+      console.log(`"${key}" matched SSID "${ssid}"`);
+      var osascript = `osascript -e "tell application \\"Messages\\" to set the status message to \\"${data[key]}\\""`;
+      console.log(osascript);
+      child_process.exec(osascript, () => {});
+      break;
+    }
+  }
 }
 
 /*!
